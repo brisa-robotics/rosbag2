@@ -34,20 +34,6 @@ if os.environ.get('ROSBAG2_PY_TEST_WITH_RTLD_GLOBAL', None) is not None:
 import rosbag2_py  # noqa
 
 
-class MinimalPublisher(Node):
-
-    def __init__(self):
-        super().__init__('minimal_publisher')
-        self.publisher_ = self.create_publisher(String, 'test', 10)
-        self.i = 0
-        msg = String()
-        msg.data = "Testing mesage"
-        while(self.i < 10):
-            self.publisher_.publish(msg)
-            time.sleep(1)
-            self.i += 1
-
-
 def test_options_qos_conversion():
     # Tests that the to-and-from C++ conversions are working properly in the pybind structs
     simple_overrides = {
@@ -99,15 +85,12 @@ def test_record_cancel(tmp_path):
         i += 1
         pub.publish(msg)
         time.sleep(0.1)
-        # executor.spin_once()
 
     recorder.cancel()
-    # Without either of this line, it does not create the metadata.yaml.
-    # Makes me wonder if the cancel works...
-    # node.destroy_node()
-    # rclpy.shutdown()
+    msg = String()
+    msg.data = 'Spining one last time'
+    pub.publish(msg)
+    time.sleep(0.1)
 
     assert (Path(bag_path) / 'metadata.yaml').exists()
     assert (Path(bag_path) / 'test_record_cancel_0.db3').exists()
-
-    #TODO check the file content
