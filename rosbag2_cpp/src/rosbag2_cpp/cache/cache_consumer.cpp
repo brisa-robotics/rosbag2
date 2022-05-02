@@ -23,7 +23,7 @@ namespace cache
 {
 
 CacheConsumer::CacheConsumer(
-  std::shared_ptr<MessageCache> message_cache,
+  std::shared_ptr<MessageCacheInterface> message_cache,
   consume_callback_function_t consume_callback)
 : message_cache_(message_cache),
   consume_callback_(consume_callback)
@@ -33,12 +33,12 @@ CacheConsumer::CacheConsumer(
 
 CacheConsumer::~CacheConsumer()
 {
-  close();
+  stop();
 }
 
-void CacheConsumer::close()
+void CacheConsumer::stop()
 {
-  message_cache_->finalize();
+  message_cache_->begin_flushing();
   is_stop_issued_ = true;
 
   ROSBAG2_CPP_LOG_INFO_STREAM(
@@ -47,15 +47,13 @@ void CacheConsumer::close()
   if (consumer_thread_.joinable()) {
     consumer_thread_.join();
   }
-  message_cache_->notify_flushing_done();
+  message_cache_->done_flushing();
 }
 
-void CacheConsumer::change_consume_callback(
-  CacheConsumer::consume_callback_function_t consume_callback)
+void CacheConsumer::start()
 {
-  consume_callback_ = consume_callback;
+  is_stop_issued_ = false;
   if (!consumer_thread_.joinable()) {
-    is_stop_issued_ = false;
     consumer_thread_ = std::thread(&CacheConsumer::exec_consuming, this);
   }
 }
@@ -65,18 +63,13 @@ void CacheConsumer::exec_consuming()
   bool exit_flag = false;
   bool flushing = false;
   while (!exit_flag) {
-    // Invariant at loop start: consumer buffer is empty
-
-    // swap producer buffer with consumer buffer
-    message_cache_->wait_for_buffer();
-
-    // make sure to use consistent callback for each iteration
-    auto callback_for_this_loop = consume_callback_;
-
-    // consume all the data from consumer buffer
-    auto consumer_buffer = message_cache_->consumer_buffer();
-    callback_for_this_loop(consumer_buffer->data());
+    message_cache_->wait_for_data();
+    message_cache_->swap_buffers();
+    // Get the current consumer buffer.
+    auto consumer_buffer = message_cache_->get_consumer_buffer();
+    consume_callback_(consumer_buffer->data());
     consumer_buffer->clear();
+    message_cache_->release_consumer_buffer();
 
     if (flushing) {exit_flag = true;}  // this was the final run
     if (is_stop_issued_) {flushing = true;}  // run one final time to flush

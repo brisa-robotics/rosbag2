@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "keyboard_handler/keyboard_handler.hpp"
 #include "rclcpp/duration.hpp"
 #include "rclcpp/qos.hpp"
 
@@ -48,6 +49,26 @@ public:
 
   // Sleep before play. Negative durations invalid. Will delay at the beginning of each loop.
   rclcpp::Duration delay = rclcpp::Duration(0, 0);
+
+  // Start paused.
+  bool start_paused = false;
+
+  // Time to start playback as an offset from the beginning of the bag.
+  rcutils_time_point_value_t start_offset = 0;
+
+  bool disable_keyboard_controls = false;
+  // keybindings
+  KeyboardHandler::KeyCode pause_resume_toggle_key = KeyboardHandler::KeyCode::SPACE;
+  KeyboardHandler::KeyCode play_next_key = KeyboardHandler::KeyCode::CURSOR_RIGHT;
+  KeyboardHandler::KeyCode increase_rate_key = KeyboardHandler::KeyCode::CURSOR_UP;
+  KeyboardHandler::KeyCode decrease_rate_key = KeyboardHandler::KeyCode::CURSOR_DOWN;
+
+  // Timeout for waiting for all published messages to be acknowledged.
+  // Negative value means that published messages do not need to be acknowledged.
+  int64_t wait_acked_timeout = -1;
+
+  // Disable to publish as loaned message
+  bool disable_loan_message = false;
 };
 
 }  // namespace rosbag2_transport

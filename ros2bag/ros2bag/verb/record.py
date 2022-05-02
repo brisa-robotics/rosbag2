@@ -39,20 +39,32 @@ class RecordVerb(VerbExtension):
 
         compression_format_choices = get_registered_compressors()
         serialization_choices = get_registered_serializers()
+        converter_suffix = '_converter'
+        serialization_choices = {
+            f[:-len(converter_suffix)]
+            for f in serialization_choices
+            if f.endswith(converter_suffix)
+        }
 
+        # Topic filter arguments
+        parser.add_argument(
+            'topics', nargs='*', default=None, help='List of topics to record.')
         parser.add_argument(
             '-a', '--all', action='store_true',
-            help='recording all topics, required if no topics '
-            'are listed explicitly or through a regex')
+            help='Record all topics. Required if no explicit topic list or regex filters.')
         parser.add_argument(
-            'topics', nargs='*', default=None, help='topics to be recorded')
+            '-e', '--regex', default='',
+            help='Record only topics containing provided regular expression. '
+            'Overrides --all, applies on top of topics list.')
         parser.add_argument(
-            '-e', '--regex', default='', help='recording only topics '
-            'matching provided regular expression')
+            '-x', '--exclude', default='',
+            help='Exclude topics containing provided regular expression. '
+            'Works on top of --all, --regex, or topics list.')
         parser.add_argument(
-            '-x', '--exclude', default='', help='exclude topics '
-            'matching provided regular expression. Works with -a and -e, '
-            'subtracting excluded topics')
+            '--include-hidden-topics', action='store_true',
+            help='Discover and record hidden topics as well. '
+            'These are topics used internally by ROS 2 implementation.')
+        # The rest. TODO(emersonknapp) organize these better by category
         parser.add_argument(
             '-o', '--output',
             help='destination of the bagfile to create, \
@@ -115,8 +127,13 @@ class RecordVerb(VerbExtension):
                  'Default is 0, which will be interpreted as the number of CPU cores.'
         )
         parser.add_argument(
-            '--include-hidden-topics', action='store_true',
-            help='record also hidden topics.'
+            '--snapshot-mode', action='store_true',
+            help='Enable snapshot mode. Messages will not be written to the bagfile until '
+                 'the "/rosbag2_recorder/snapshot" service is called.'
+        )
+        parser.add_argument(
+            '--ignore-leaf-topics', action='store_true',
+            help='Ignore topics without a publisher.'
         )
         parser.add_argument(
             '--qos-profile-overrides-path', type=FileType('r'),
@@ -138,6 +155,9 @@ class RecordVerb(VerbExtension):
                  'write:'
                  '  pragmas: [\"<setting_name>\" = <setting_value>]'
                  'For a list of sqlite3 settings, refer to sqlite3 documentation')
+        parser.add_argument(
+            '--start-paused', action='store_true', default=False,
+            help='Start the recorder in a paused state.')
         self._subparser = parser
 
     def main(self, *, args):  # noqa: D102
@@ -190,6 +210,7 @@ class RecordVerb(VerbExtension):
             max_cache_size=args.max_cache_size,
             storage_preset_profile=args.storage_preset_profile,
             storage_config_uri=storage_config_file,
+            snapshot_mode=args.snapshot_mode
         )
         record_options = RecordOptions()
         record_options.all = args.all
@@ -207,6 +228,8 @@ class RecordVerb(VerbExtension):
         record_options.compression_threads = args.compression_threads
         record_options.topic_qos_profile_overrides = qos_profile_overrides
         record_options.include_hidden_topics = args.include_hidden_topics
+        record_options.start_paused = args.start_paused
+        record_options.ignore_leaf_topics = args.ignore_leaf_topics
 
         recorder = Recorder()
 

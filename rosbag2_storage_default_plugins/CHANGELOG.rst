@@ -2,6 +2,45 @@
 Changelog for package rosbag2_storage_default_plugins
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.15.1 (2022-04-06)
+-------------------
+
+0.15.0 (2022-04-05)
+-------------------
+
+0.14.1 (2022-03-29)
+-------------------
+* Bump version number to avoid conflict
+* Contributors: Chris Lalancette
+
+0.14.0 (2022-03-29)
+-------------------
+* Install headers to include/${PROJECT_NAME} (`#958 <https://github.com/ros2/rosbag2/issues/958>`_)
+* Contributors: Shane Loretz
+
+0.13.0 (2022-01-13)
+-------------------
+* Emit a warning rather than crash when a message is too big for sqlite (`#919 <https://github.com/ros2/rosbag2/issues/919>`_)
+* Contributors: William Woodall
+
+0.12.0 (2021-12-17)
+-------------------
+* Enable YAML encoding/decoding for RecordOptions and StorageOptions (`#916 <https://github.com/ros2/rosbag2/issues/916>`_)
+* Contributors: Emerson Knapp
+
+0.11.0 (2021-11-08)
+-------------------
+* Update package maintainers (`#899 <https://github.com/ros2/rosbag2/issues/899>`_)
+* Contributors: Michel Hidalgo
+
+0.10.1 (2021-10-22)
+-------------------
+
+0.10.0 (2021-10-19)
+-------------------
+* added seek interface (`#836 <https://github.com/ros2/rosbag2/issues/836>`_)
+* Contributors: sonia
+
 0.9.0 (2021-05-17)
 ------------------
 

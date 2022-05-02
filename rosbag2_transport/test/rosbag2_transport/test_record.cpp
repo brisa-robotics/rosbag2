@@ -30,7 +30,7 @@
 #include "test_msgs/msg/arrays.hpp"
 #include "test_msgs/message_fixtures.hpp"
 
-#include "qos.hpp"
+#include "rosbag2_transport/qos.hpp"
 #include "record_integration_fixture.hpp"
 
 TEST_F(RecordIntegrationTestFixture, published_messages_from_multiple_topics_are_recorded)
@@ -91,7 +91,7 @@ TEST_F(RecordIntegrationTestFixture, published_messages_from_multiple_topics_are
 TEST_F(RecordIntegrationTestFixture, qos_is_stored_in_metadata)
 {
   auto string_message = get_messages_strings()[1];
-  std::string topic = "/chatter";
+  std::string topic = "/qos_chatter";
 
   rosbag2_test_common::PublicationManager pub_manager;
   pub_manager.setup_publisher(topic, string_message, 2);
@@ -151,7 +151,7 @@ TEST_F(RecordIntegrationTestFixture, qos_is_stored_in_metadata)
 TEST_F(RecordIntegrationTestFixture, records_sensor_data)
 {
   auto string_message = get_messages_strings()[1];
-  std::string topic = "/chatter";
+  std::string topic = "/sensor_chatter";
 
   rosbag2_test_common::PublicationManager pub_manager;
   pub_manager.setup_publisher(topic, string_message, 2, rclcpp::SensorDataQoS());
@@ -189,7 +189,7 @@ TEST_F(RecordIntegrationTestFixture, records_sensor_data)
 TEST_F(RecordIntegrationTestFixture, receives_latched_messages)
 {
   auto string_message = get_messages_strings()[1];
-  std::string topic = "/chatter";
+  std::string topic = "/latched_chatter";
 
   size_t num_latched_messages = 3;
   auto profile_transient_local = rclcpp::QoS(num_latched_messages).transient_local();

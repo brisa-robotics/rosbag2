@@ -23,7 +23,11 @@
 #include <string>
 #include <vector>
 
+#include "rcpputils/thread_safety_annotations.hpp"
+
 #include "rosbag2_cpp/cache/message_cache_buffer.hpp"
+#include "rosbag2_cpp/cache/message_cache_interface.hpp"
+#include "rosbag2_cpp/cache/cache_buffer_interface.hpp"
 #include "rosbag2_cpp/visibility_control.hpp"
 
 #include "rosbag2_storage/serialized_bag_message.hpp"
@@ -47,8 +51,12 @@ namespace cache
 * Double buffering is a part of producer-consumer pattern and optimizes for
 * the consumer performance (which can be a bottleneck, e.g. disk writes).
 *
+* This is a "greedy consumer" implementation -  every time the consumer asks
+* for a buffer to consume, the buffers are swapped so that the latest data
+* goes to the consumer right away.
+*
 * Two instances of MessageCacheBuffer are used, one for producer and one for
-* the consumer. Buffers are switched through wait_for_buffer function, which
+* the consumer. Buffers are switched through swap_buffers function, which
 * involves synchronization and a simple pointer switch.
 *
 * The cache can enter a flushing state, intended as a finalization state,
@@ -60,26 +68,27 @@ namespace cache
 * performance issues, most likely with the CacheConsumer consumer callback.
 */
 class ROSBAG2_CPP_PUBLIC MessageCache
+  : public MessageCacheInterface
 {
 public:
-  explicit MessageCache(uint64_t max_buffer_size);
+  explicit MessageCache(size_t max_buffer_size);
 
-  ~MessageCache();
+  ~MessageCache() override;
 
   /// Puts msg into primary buffer. With full cache, msg is ignored and counted as lost
-  void push(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg);
+  void push(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg) override;
 
-  /// Summarize dropped/remaining messages
-  void log_dropped();
+  /// Gets a consumer buffer.
+  /// In this greedy implementation, swap buffers before providing the buffer.
+  std::shared_ptr<CacheBufferInterface>
+  get_consumer_buffer() override RCPPUTILS_TSA_ACQUIRE(consumer_buffer_mutex_);
 
-  /// Producer API: notify consumer to wake-up (primary buffer has data)
-  void notify_buffer_consumer();
+  /// \brief Signals that the consumer is done consuming, unlocking the buffer so it may be swapped.
+  void release_consumer_buffer() override RCPPUTILS_TSA_RELEASE(consumer_buffer_mutex_);
 
-  /// Set the cache to consume-only mode for final buffer flush before closing
-  void finalize();
-
-  /// Notify that flushing is complete
-  void notify_flushing_done();
+  /// \brief Blocks current thread and going to wait on condition variable until notify_data_ready
+  /// will be called.
+  void wait_for_data() override;
 
   /**
   * Consumer API: wait until primary buffer is ready and swap it with consumer buffer.
@@ -88,26 +97,34 @@ public:
   * a) data was inserted into the producer buffer, consuming can continue after a swap
   * b) we are flushing the data (in case we missed the last notification when consuming)
   **/
-  void wait_for_buffer();
+  void swap_buffers() override;
 
-  /// Consumer API: get current buffer to consume
-  std::shared_ptr<MessageCacheBuffer> consumer_buffer();
+  /// Set the cache to consume-only mode for final buffer flush before closing
+  void begin_flushing() override;
 
-  /// Exposes counts of messages dropped per topic
-  std::unordered_map<std::string, uint32_t> messages_dropped() const;
+  /// Notify that flushing is complete
+  void done_flushing() override;
 
-private:
-  /// Double buffers
-  std::shared_ptr<MessageCacheBuffer> primary_buffer_;
-  std::shared_ptr<MessageCacheBuffer> secondary_buffer_;
+  /// Summarize dropped/remaining messages
+  void log_dropped() override;
 
+  /// Producer API: notify consumer to wake-up (primary buffer has data)
+  void notify_data_ready() override;
+
+protected:
   /// Dropped messages per topic. Used for printing in alphabetic order
   std::unordered_map<std::string, uint32_t> messages_dropped_per_topic_;
 
+private:
+  /// Double buffers
+  std::shared_ptr<MessageCacheBuffer> producer_buffer_;
+  std::mutex producer_buffer_mutex_;
+  std::shared_ptr<MessageCacheBuffer> consumer_buffer_;
+  std::mutex consumer_buffer_mutex_;
+
   /// Double buffers sync (following cpp core guidelines for condition variables)
-  bool primary_buffer_can_be_swapped_ {false};
+  bool data_ready_ {false};
   std::condition_variable cache_condition_var_;
-  std::mutex cache_mutex_;
 
   /// Cache is no longer accepting messages and is in the process of flushing
   std::atomic_bool flushing_ {false};

@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "rosbag2_cpp/cache/message_cache.hpp"
+#include "rosbag2_cpp/cache/message_cache_interface.hpp"
 #include "rosbag2_cpp/logging.hpp"
 
 namespace rosbag2_cpp
@@ -27,10 +28,20 @@ namespace rosbag2_cpp
 namespace cache
 {
 
-MessageCache::MessageCache(uint64_t max_buffer_size)
+MessageCache::MessageCache(size_t max_buffer_size)
 {
-  primary_buffer_ = std::make_shared<MessageCacheBuffer>(max_buffer_size);
-  secondary_buffer_ = std::make_shared<MessageCacheBuffer>(max_buffer_size);
+  producer_buffer_ = std::make_shared<MessageCacheBuffer>(max_buffer_size);
+  consumer_buffer_ = std::make_shared<MessageCacheBuffer>(max_buffer_size);
+}
+
+MessageCache::~MessageCache()
+{
+  // Initiate flushing on destruction to unblock wait_for_data. This is defensive programming
+  // and in regular flow upper object owner should take care about unblocking wait_for_data in
+  // exceptional situations.
+  flushing_ = true;
+  cache_condition_var_.notify_one();
+  log_dropped();
 }
 
 void MessageCache::push(std::shared_ptr<const rosbag2_storage::SerializedBagMessage> msg)
@@ -38,63 +49,69 @@ void MessageCache::push(std::shared_ptr<const rosbag2_storage::SerializedBagMess
   // While pushing, we keep track of inserted and dropped messages as well
   bool pushed = false;
   {
-    std::lock_guard<std::mutex> cache_lock(cache_mutex_);
-    if (!flushing_) {
-      pushed = primary_buffer_->push(msg);
-    }
+    std::lock_guard<std::mutex> lock(producer_buffer_mutex_);
+    pushed = producer_buffer_->push(msg);
   }
+
   if (!pushed) {
     messages_dropped_per_topic_[msg->topic_name]++;
   }
 
-  notify_buffer_consumer();
+  notify_data_ready();
 }
 
-void MessageCache::finalize()
+std::shared_ptr<CacheBufferInterface> MessageCache::get_consumer_buffer()
+{
+  consumer_buffer_mutex_.lock();
+  return consumer_buffer_;
+}
+
+void MessageCache::release_consumer_buffer()
+{
+  consumer_buffer_mutex_.unlock();
+}
+
+void MessageCache::notify_data_ready()
 {
   {
-    std::lock_guard<std::mutex> cache_lock(cache_mutex_);
+    std::lock_guard<std::mutex> lock(producer_buffer_mutex_);
+    data_ready_ = true;
+  }
+  cache_condition_var_.notify_one();
+}
+
+void MessageCache::wait_for_data()
+{
+  std::unique_lock<std::mutex> producer_lock(producer_buffer_mutex_);
+  if (!flushing_) {
+    // Required condition check to protect against spurious wakeups
+    cache_condition_var_.wait(
+      producer_lock, [this] {
+        return data_ready_ || flushing_;
+      });
+    data_ready_ = false;
+  }
+}
+
+void MessageCache::swap_buffers()
+{
+  std::lock_guard<std::mutex> producer_lock(producer_buffer_mutex_);
+  std::lock_guard<std::mutex> consumer_lock(consumer_buffer_mutex_);
+  std::swap(producer_buffer_, consumer_buffer_);
+}
+
+void MessageCache::begin_flushing()
+{
+  {
+    std::lock_guard<std::mutex> lock(producer_buffer_mutex_);
     flushing_ = true;
   }
   cache_condition_var_.notify_one();
 }
 
-void MessageCache::notify_flushing_done()
+void MessageCache::done_flushing()
 {
   flushing_ = false;
-}
-
-void MessageCache::notify_buffer_consumer()
-{
-  {
-    std::lock_guard<std::mutex> cache_lock(cache_mutex_);
-    primary_buffer_can_be_swapped_ = true;
-  }
-  cache_condition_var_.notify_one();
-}
-
-void MessageCache::wait_for_buffer()
-{
-  std::unique_lock<std::mutex> lock(cache_mutex_);
-  if (!flushing_) {
-    // Required condition check to protect against spurious wakeups
-    cache_condition_var_.wait(
-      lock, [this] {
-        return primary_buffer_can_be_swapped_ || flushing_;
-      });
-    primary_buffer_can_be_swapped_ = false;
-  }
-  std::swap(primary_buffer_, secondary_buffer_);
-}
-
-std::shared_ptr<MessageCacheBuffer> MessageCache::consumer_buffer()
-{
-  return secondary_buffer_;
-}
-
-std::unordered_map<std::string, uint32_t> MessageCache::messages_dropped() const
-{
-  return messages_dropped_per_topic_;
 }
 
 void MessageCache::log_dropped()
@@ -122,17 +139,12 @@ void MessageCache::log_dropped()
     ROSBAG2_CPP_LOG_WARN_STREAM(log_text);
   }
 
-  size_t remaining = primary_buffer_->size() + secondary_buffer_->size();
+  size_t remaining = producer_buffer_->size() + consumer_buffer_->size();
   if (remaining > 0) {
     ROSBAG2_CPP_LOG_WARN_STREAM(
       "Cache buffers were unflushed with " << remaining << " remaining messages"
     );
   }
-}
-
-MessageCache::~MessageCache()
-{
-  log_dropped();
 }
 
 }  // namespace cache

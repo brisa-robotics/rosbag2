@@ -5,7 +5,7 @@ package_name = 'ros2bag'
 
 setup(
     name=package_name,
-    version='0.9.0',
+    version='0.15.1',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/' + package_name, ['package.xml']),
@@ -38,6 +38,7 @@ The package provides the rosbag command for the ROS 2 command line tools.""",
             'ros2bag.verb = ros2bag.verb:VerbExtension',
         ],
         'ros2bag.verb': [
+            'convert = ros2bag.verb.convert:ConvertVerb',
             'info = ros2bag.verb.info:InfoVerb',
             'list = ros2bag.verb.list:ListVerb',
             'play = ros2bag.verb.play:PlayVerb',

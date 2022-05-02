@@ -20,16 +20,12 @@
 #include <utility>
 #include <vector>
 
-#include "rosbag2_compression/compression_options.hpp"
-#include "rosbag2_compression/sequential_compression_reader.hpp"
-#include "rosbag2_compression/sequential_compression_writer.hpp"
-#include "rosbag2_cpp/reader.hpp"
-#include "rosbag2_cpp/readers/sequential_reader.hpp"
-#include "rosbag2_cpp/writer.hpp"
-#include "rosbag2_cpp/writers/sequential_writer.hpp"
 #include "rosbag2_storage/storage_options.hpp"
+#include "rosbag2_storage/yaml.hpp"
+#include "rosbag2_transport/bag_rewrite.hpp"
 #include "rosbag2_transport/play_options.hpp"
 #include "rosbag2_transport/player.hpp"
+#include "rosbag2_transport/reader_writer_factory.hpp"
 #include "rosbag2_transport/record_options.hpp"
 #include "rosbag2_transport/recorder.hpp"
 
@@ -78,6 +74,16 @@ public:
     return RCUTILS_NS_TO_S(static_cast<double>(this->delay.nanoseconds()));
   }
 
+  void setStartOffset(double start_offset)
+  {
+    this->start_offset = static_cast<rcutils_time_point_value_t>(RCUTILS_S_TO_NS(start_offset));
+  }
+
+  double getStartOffset() const
+  {
+    return RCUTILS_NS_TO_S(static_cast<double>(this->start_offset));
+  }
+
   void setTopicQoSProfileOverrides(const py::dict & overrides)
   {
     py_dict = overrides;
@@ -116,24 +122,7 @@ public:
     const rosbag2_storage::StorageOptions & storage_options,
     PlayOptions & play_options)
   {
-    std::unique_ptr<rosbag2_cpp::Reader> reader = nullptr;
-    // Determine whether to build compression or regular reader
-    {
-      rosbag2_storage::MetadataIo metadata_io{};
-      rosbag2_storage::BagMetadata metadata{};
-      if (metadata_io.metadata_file_exists(storage_options.uri)) {
-        metadata = metadata_io.read_metadata(storage_options.uri);
-        if (!metadata.compression_format.empty()) {
-          reader = std::make_unique<rosbag2_cpp::Reader>(
-            std::make_unique<rosbag2_compression::SequentialCompressionReader>());
-        }
-      }
-      if (reader == nullptr) {
-        reader = std::make_unique<rosbag2_cpp::Reader>(
-          std::make_unique<rosbag2_cpp::readers::SequentialReader>());
-      }
-    }
-
+    auto reader = rosbag2_transport::ReaderWriterFactory::make_reader(storage_options);
     auto player = std::make_shared<rosbag2_transport::Player>(
       std::move(reader), storage_options, play_options);
 
@@ -152,10 +141,14 @@ public:
 
 class Recorder
 {
+private:
+  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> exec_;
+
 public:
   Recorder()
   {
     rclcpp::init(0, nullptr);
+    exec_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
     std::signal(
       SIGTERM, [](int /* signal */) {
         rclcpp::shutdown();
@@ -171,45 +164,54 @@ public:
     const rosbag2_storage::StorageOptions & storage_options,
     RecordOptions & record_options)
   {
-    rosbag2_compression::CompressionOptions compression_options {
-      record_options.compression_format,
-      rosbag2_compression::compression_mode_from_string(record_options.compression_mode),
-      record_options.compression_queue_size,
-      record_options.compression_threads
-    };
-    if (compression_options.compression_threads < 1) {
-      compression_options.compression_threads = std::thread::hardware_concurrency();
-    }
-
     if (record_options.rmw_serialization_format.empty()) {
       record_options.rmw_serialization_format = std::string(rmw_get_serialization_format());
     }
 
-
-    std::unique_ptr<rosbag2_cpp::Writer> writer = nullptr;
-    // Change writer based on recording options
-    if (!record_options.compression_format.empty()) {
-      writer = std::make_unique<rosbag2_cpp::Writer>(
-        std::make_unique<rosbag2_compression::SequentialCompressionWriter>(compression_options));
-    } else {
-      writer = std::make_unique<rosbag2_cpp::Writer>(
-        std::make_unique<rosbag2_cpp::writers::SequentialWriter>());
-    }
-
+    auto writer = rosbag2_transport::ReaderWriterFactory::make_writer(record_options);
     auto recorder = std::make_shared<rosbag2_transport::Recorder>(
       std::move(writer), storage_options, record_options);
     recorder->record();
-    rclcpp::executors::SingleThreadedExecutor exec;
-    exec.add_node(recorder);
-    auto spin_thread = std::thread(
-      [&exec]() {
-        exec.spin();
-      });
 
-    exec.cancel();
-    spin_thread.join();
+    exec_->add_node(recorder);
+    // Release the GIL for long-running record, so that calling Python code can use other threads
+    {
+      py::gil_scoped_release release;
+      exec_->spin();
+    }
+  }
+
+  void cancel()
+  {
+    exec_->cancel();
   }
 };
+
+// Simple wrapper to read the output config YAML into structs
+void bag_rewrite(
+  const std::vector<rosbag2_storage::StorageOptions> & input_options,
+  std::string output_config_file)
+{
+  YAML::Node yaml_file = YAML::LoadFile(output_config_file);
+  auto bag_nodes = yaml_file["output_bags"];
+  if (!bag_nodes) {
+    throw std::runtime_error("Output bag config YAML file must have top-level key 'output_bags'");
+  }
+  if (!bag_nodes.IsSequence()) {
+    throw std::runtime_error(
+            "Top-level key 'output_bags' must contain a list of "
+            "StorageOptions/RecordOptions dicts.");
+  }
+
+  std::vector<
+    std::pair<rosbag2_storage::StorageOptions, rosbag2_transport::RecordOptions>> output_options;
+  for (const auto & bag_node : bag_nodes) {
+    auto storage_options = bag_node.as<rosbag2_storage::StorageOptions>();
+    auto record_options = bag_node.as<rosbag2_transport::RecordOptions>();
+    output_options.push_back(std::make_pair(storage_options, record_options));
+  }
+  rosbag2_transport::bag_rewrite(input_options, output_options);
+}
 
 }  // namespace rosbag2_py
 
@@ -239,6 +241,14 @@ PYBIND11_MODULE(_transport, m) {
     "delay",
     &PlayOptions::getDelay,
     &PlayOptions::setDelay)
+  .def_readwrite("disable_keyboard_controls", &PlayOptions::disable_keyboard_controls)
+  .def_readwrite("start_paused", &PlayOptions::start_paused)
+  .def_property(
+    "start_offset",
+    &PlayOptions::getStartOffset,
+    &PlayOptions::setStartOffset)
+  .def_readwrite("wait_acked_timeout", &PlayOptions::wait_acked_timeout)
+  .def_readwrite("disable_loan_message", &PlayOptions::disable_loan_message)
   ;
 
   py::class_<RecordOptions>(m, "RecordOptions")
@@ -260,6 +270,8 @@ PYBIND11_MODULE(_transport, m) {
     &RecordOptions::getTopicQoSProfileOverrides,
     &RecordOptions::setTopicQoSProfileOverrides)
   .def_readwrite("include_hidden_topics", &RecordOptions::include_hidden_topics)
+  .def_readwrite("start_paused", &RecordOptions::start_paused)
+  .def_readwrite("ignore_leaf_topics", &RecordOptions::ignore_leaf_topics)
   ;
 
   py::class_<rosbag2_py::Player>(m, "Player")
@@ -270,5 +282,11 @@ PYBIND11_MODULE(_transport, m) {
   py::class_<rosbag2_py::Recorder>(m, "Recorder")
   .def(py::init())
   .def("record", &rosbag2_py::Recorder::record)
+  .def("cancel", &rosbag2_py::Recorder::cancel)
   ;
+
+  m.def(
+    "bag_rewrite",
+    &rosbag2_py::bag_rewrite,
+    "Given one or more input bags, output one or more bags with new settings.");
 }

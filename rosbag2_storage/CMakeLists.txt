@@ -32,11 +32,12 @@ add_library(
   src/rosbag2_storage/metadata_io.cpp
   src/rosbag2_storage/ros_helper.cpp
   src/rosbag2_storage/storage_factory.cpp
+  src/rosbag2_storage/storage_options.cpp
   src/rosbag2_storage/base_io_interface.cpp)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
 )
 ament_target_dependencies(
   ${PROJECT_NAME}
@@ -49,12 +50,9 @@ ament_target_dependencies(
 # which is appropriate when building the dll but not consuming it.
 target_compile_definitions(${PROJECT_NAME} PRIVATE "ROSBAG2_STORAGE_BUILDING_DLL")
 
-# prevent pluginlib from using boost
-target_compile_definitions(${PROJECT_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
-
 install(
   DIRECTORY include/
-  DESTINATION include)
+  DESTINATION include/${PROJECT_NAME})
 
 install(
   TARGETS ${PROJECT_NAME}
@@ -63,9 +61,13 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-ament_export_include_directories(include)
+# Export old-style CMake variables
+ament_export_include_directories("include/${PROJECT_NAME}")
 ament_export_libraries(${PROJECT_NAME})
+
+# Export modern CMake targets
 ament_export_targets(export_${PROJECT_NAME})
+
 ament_export_dependencies(pluginlib yaml_cpp_vendor)
 
 if(BUILD_TESTING)
@@ -91,24 +93,26 @@ if(BUILD_TESTING)
   ament_add_gmock(test_storage_factory
     test/rosbag2_storage/test_storage_factory.cpp)
   if(TARGET test_storage_factory)
-    target_include_directories(test_storage_factory PRIVATE include)
     target_link_libraries(test_storage_factory ${PROJECT_NAME})
   endif()
 
   ament_add_gmock(test_ros_helper
     test/rosbag2_storage/test_ros_helper.cpp)
   if(TARGET test_ros_helper)
-    target_include_directories(test_ros_helper PRIVATE include)
     target_link_libraries(test_ros_helper ${PROJECT_NAME})
   endif()
 
   ament_add_gmock(test_metadata_serialization
     test/rosbag2_storage/test_metadata_serialization.cpp)
   if(TARGET test_metadata_serialization)
-    target_include_directories(test_metadata_serialization PRIVATE include)
     target_link_libraries(test_metadata_serialization ${PROJECT_NAME})
     ament_target_dependencies(test_metadata_serialization rosbag2_test_common)
   endif()
+
+  ament_add_gmock(test_storage_options
+    test/rosbag2_storage/test_storage_options.cpp)
+  target_link_libraries(test_storage_options ${PROJECT_NAME})
+  ament_target_dependencies(test_storage_options rosbag2_test_common)
 endif()
 
 ament_package()

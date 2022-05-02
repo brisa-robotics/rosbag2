@@ -22,7 +22,9 @@
 #include <vector>
 
 #include "rosbag2_cpp/cache/cache_consumer.hpp"
+#include "rosbag2_cpp/cache/circular_message_cache.hpp"
 #include "rosbag2_cpp/cache/message_cache.hpp"
+#include "rosbag2_cpp/cache/message_cache_interface.hpp"
 #include "rosbag2_cpp/converter.hpp"
 #include "rosbag2_cpp/serialization_format_converter_factory.hpp"
 #include "rosbag2_cpp/writer_interfaces/base_writer_interface.hpp"
@@ -106,6 +108,12 @@ public:
    */
   void write(std::shared_ptr<rosbag2_storage::SerializedBagMessage> message) override;
 
+  /**
+   * Take a snapshot by triggering a circular buffer flip, writing data to disk.
+   * *\returns true if snapshot is successful
+   */
+  bool take_snapshot() override;
+
 protected:
   std::string base_folder_;
   std::unique_ptr<rosbag2_storage::StorageFactoryInterface> storage_factory_;
@@ -114,8 +122,8 @@ protected:
   std::unique_ptr<rosbag2_storage::MetadataIo> metadata_io_;
   std::unique_ptr<Converter> converter_;
 
-  bool use_cache_;
-  std::shared_ptr<rosbag2_cpp::cache::MessageCache> message_cache_;
+  bool use_cache_ {false};
+  std::shared_ptr<rosbag2_cpp::cache::MessageCacheInterface> message_cache_;
   std::unique_ptr<rosbag2_cpp::cache::CacheConsumer> cache_consumer_;
 
   void switch_to_next_storage();
@@ -124,10 +132,6 @@ protected:
     const std::string & base_folder, uint64_t storage_count);
 
   rosbag2_storage::StorageOptions storage_options_;
-
-  // Used in bagfile splitting;
-  // specifies the best-effort maximum duration of a bagfile in seconds.
-  std::chrono::seconds max_bagfile_duration;
 
   // Used to track topic -> message count. If cache is present, it is updated by CacheConsumer
   std::unordered_map<std::string, rosbag2_storage::TopicInformation> topics_names_to_info_;
@@ -153,6 +157,11 @@ protected:
   virtual std::shared_ptr<rosbag2_storage::SerializedBagMessage>
   get_writeable_message(
     std::shared_ptr<rosbag2_storage::SerializedBagMessage> message);
+
+private:
+  /// Helper method to write messages while also updating tracked metadata.
+  void write_messages(
+    const std::vector<std::shared_ptr<const rosbag2_storage::SerializedBagMessage>> & messages);
 };
 
 }  // namespace writers

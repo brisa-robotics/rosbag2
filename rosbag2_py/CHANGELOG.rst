@@ -2,6 +2,69 @@
 Changelog for package rosbag2_py
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.15.1 (2022-04-06)
+-------------------
+* support to publish as loaned message (`#981 <https://github.com/ros2/rosbag2/issues/981>`_)
+* Revert "Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)" (`#984 <https://github.com/ros2/rosbag2/issues/984>`_)
+* Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)
+* Contributors: Audrow Nash, Barry Xu, Jorge Perez, Tony Peng
+
+0.15.0 (2022-04-05)
+-------------------
+* support to publish as loaned message (`#981 <https://github.com/ros2/rosbag2/issues/981>`_)
+* Revert "Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)" (`#984 <https://github.com/ros2/rosbag2/issues/984>`_)
+* Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)
+* Contributors: Barry Xu, Jorge Perez, Tony Peng
+
+0.14.1 (2022-03-29)
+-------------------
+* Bump version number to avoid conflict
+* Contributors: Chris Lalancette
+
+0.14.0 (2022-03-29)
+-------------------
+* Make sure published messages are acknowledged for play mode (`#951 <https://github.com/ros2/rosbag2/issues/951>`_)
+* Contributors: Barry Xu
+
+0.13.0 (2022-01-13)
+-------------------
+* Fix relative path syntax for cpplint (`#947 <https://github.com/ros2/rosbag2/issues/947>`_)
+* Update to pybind11 2.7.1 (`#945 <https://github.com/ros2/rosbag2/issues/945>`_)
+* Contributors: Chris Lalancette, Jacob Perron
+
+0.12.0 (2021-12-17)
+-------------------
+* Add start-offset play option (`#931 <https://github.com/ros2/rosbag2/issues/931>`_)
+* Expose bag_rewrite as `ros2 bag convert` (`#921 <https://github.com/ros2/rosbag2/issues/921>`_)
+* Add "ignore leaf topics" option to recorder (`#925 <https://github.com/ros2/rosbag2/issues/925>`_)
+* Add a ReaderWriterFactory utility to share logic for reuse (`#923 <https://github.com/ros2/rosbag2/issues/923>`_)
+* Add pause/resume options to the bag recorder (`#905 <https://github.com/ros2/rosbag2/issues/905>`_)
+* Contributors: Abrar Rahman Protyasha, Emerson Knapp, Ivan Santiago Paunovic
+
+0.11.0 (2021-11-08)
+-------------------
+* Add --start-paused option to `ros2 bag play` (`#904 <https://github.com/ros2/rosbag2/issues/904>`_)
+* Update package maintainers (`#899 <https://github.com/ros2/rosbag2/issues/899>`_)
+* Fix converter plugin choices for record (`#897 <https://github.com/ros2/rosbag2/issues/897>`_)
+* Contributors: Emerson Knapp, Ivan Santiago Paunovic, Michel Hidalgo
+
+0.10.1 (2021-10-22)
+-------------------
+
+0.10.0 (2021-10-19)
+-------------------
+* Metadata per file info (`#870 <https://github.com/ros2/rosbag2/issues/870>`_)
+* keyboard controls for pause/resume toggle and play-next: (`#847 <https://github.com/ros2/rosbag2/issues/847>`_)
+* Add --snapshot-mode argument to the "record" verb (`#851 <https://github.com/ros2/rosbag2/issues/851>`_)
+* Add stopRecording into rosbag2_py (`#854 <https://github.com/ros2/rosbag2/issues/854>`_)
+* added seek interface (`#836 <https://github.com/ros2/rosbag2/issues/836>`_)
+* Refactor plugin query mechanism and standardize trait management (`#833 <https://github.com/ros2/rosbag2/issues/833>`_)
+* Update `PlayOptions::delay` to `rclcpp::Duration` to get nanosecond resolution (`#843 <https://github.com/ros2/rosbag2/issues/843>`_)
+* Load compression and serialization choices via plugin query (`#827 <https://github.com/ros2/rosbag2/issues/827>`_)
+* Add delay option (`#789 <https://github.com/ros2/rosbag2/issues/789>`_)
+* Handle SIGTERM gracefully in recording (`#792 <https://github.com/ros2/rosbag2/issues/792>`_)
+* Contributors: Afonso da Fonseca Braga, Cameron Miller, Emerson Knapp, Kosuke Takeuchi, Wojciech Jaworski, sonia
+
 0.9.0 (2021-05-17)
 ------------------
 * remove rosbag2_transport header (`#742 <https://github.com/ros2/rosbag2/issues/742>`_)

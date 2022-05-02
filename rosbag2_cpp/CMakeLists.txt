@@ -27,14 +27,14 @@ endif()
 
 option(DISABLE_SANITIZERS "disables the use of gcc sanitizers" ON)
 if(NOT DISABLE_SANITIZERS AND CMAKE_COMPILER_IS_GNUCXX)
-  include(CheckCXXSourceCompiles)
+  include(CheckCXXSourceRuns)
   set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
   set(CMAKE_REQUIRED_FLAGS "${OLD_CMAKE_REQUIRED_FLAGS} -fsanitize=leak")
-  check_cxx_source_compiles("int main() {}" HAVE_SANITIZERS)
+  check_cxx_source_runs("int main() {}" HAVE_SANITIZERS)
   set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
   if(NOT HAVE_SANITIZERS)
     set(DISABLE_SANITIZERS ON)
-    message(WARNING "Sanitizers aren't supported by the compiler - disabling")
+    message(WARNING "Sanitizers aren't supported by the compiler or environment - disabling")
   endif()
 endif()
 
@@ -55,7 +55,9 @@ find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 add_library(${PROJECT_NAME} SHARED
   src/rosbag2_cpp/cache/cache_consumer.cpp
   src/rosbag2_cpp/cache/message_cache_buffer.cpp
+  src/rosbag2_cpp/cache/message_cache_circular_buffer.cpp
   src/rosbag2_cpp/cache/message_cache.cpp
+  src/rosbag2_cpp/cache/circular_message_cache.cpp
   src/rosbag2_cpp/clocks/time_controller_clock.cpp
   src/rosbag2_cpp/converter.cpp
   src/rosbag2_cpp/info.cpp
@@ -89,19 +91,16 @@ ament_target_dependencies(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME}
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>
 )
 
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
 target_compile_definitions(${PROJECT_NAME} PRIVATE "ROSBAG2_CPP_BUILDING_DLL")
 
-# prevent pluginlib from using boost
-target_compile_definitions(${PROJECT_NAME} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
-
 install(
   DIRECTORY include/
-  DESTINATION include)
+  DESTINATION include/${PROJECT_NAME})
 
 install(
   TARGETS ${PROJECT_NAME}
@@ -110,9 +109,13 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-ament_export_include_directories(include)
+# Export old-style CMake variables
+ament_export_include_directories("include/${PROJECT_NAME}")
 ament_export_libraries(${PROJECT_NAME})
+
+# Export modern CMake targets
 ament_export_targets(export_${PROJECT_NAME})
+
 ament_export_dependencies(
   pluginlib
   rclcpp
@@ -148,7 +151,6 @@ if(BUILD_TESTING)
   ament_add_gmock(test_converter_factory
     test/rosbag2_cpp/test_converter_factory.cpp)
   if(TARGET test_converter_factory)
-    target_include_directories(test_converter_factory PRIVATE include)
     target_link_libraries(test_converter_factory ${PROJECT_NAME})
   endif()
 
@@ -187,6 +189,12 @@ if(BUILD_TESTING)
     target_link_libraries(test_message_cache ${PROJECT_NAME})
   endif()
 
+  ament_add_gmock(test_circular_message_cache
+    test/rosbag2_cpp/test_circular_message_cache.cpp)
+  if(TARGET test_circular_message_cache)
+    target_link_libraries(test_circular_message_cache ${PROJECT_NAME})
+  endif()
+
 
   # If compiling with gcc, run this test with sanitizers enabled
   ament_add_gmock(test_ros2_message
@@ -201,8 +209,7 @@ if(BUILD_TESTING)
     endif()
     target_include_directories(test_ros2_message
       PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-      $<INSTALL_INTERFACE:include>)
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
     ament_target_dependencies(test_ros2_message
       ament_index_cpp
       rcpputils

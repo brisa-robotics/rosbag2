@@ -2,6 +2,76 @@
 Changelog for package rosbag2
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.15.1 (2022-04-06)
+-------------------
+* Revert "Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)" (`#984 <https://github.com/ros2/rosbag2/issues/984>`_)
+* Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)
+* Contributors: Audrow Nash, Jorge Perez, Tony Peng
+
+0.15.0 (2022-04-05)
+-------------------
+* Revert "Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)" (`#984 <https://github.com/ros2/rosbag2/issues/984>`_)
+* Add the ability to record any key/value pair in the 'custom' field in metadata.yaml (`#976 <https://github.com/ros2/rosbag2/issues/976>`_)
+* Contributors: Jorge Perez, Tony Peng
+
+0.14.1 (2022-03-29)
+-------------------
+* Bump version number to avoid conflict
+* Contributors: Chris Lalancette
+
+0.14.0 (2022-03-29)
+-------------------
+* Install headers to include/${PROJECT_NAME} (`#958 <https://github.com/ros2/rosbag2/issues/958>`_)
+* Remove unnecessary public definition. (`#950 <https://github.com/ros2/rosbag2/issues/950>`_)
+* Contributors: Chris Lalancette, Shane Loretz
+
+0.13.0 (2022-01-13)
+-------------------
+* Fix relative path syntax for cpplint (`#947 <https://github.com/ros2/rosbag2/issues/947>`_)
+* Mark up the message_cache with TSA annotations (`#946 <https://github.com/ros2/rosbag2/issues/946>`_)
+* Contributors: Chris Lalancette, Jacob Perron
+
+0.12.0 (2021-12-17)
+-------------------
+* Changes for uncrustify 0.72 (`#937 <https://github.com/ros2/rosbag2/issues/937>`_)
+* Redesign in cache consumer and circular message cache to get rid from busy loop (`#941 <https://github.com/ros2/rosbag2/issues/941>`_)
+* Bugfix for broken bag split when using cache (`#936 <https://github.com/ros2/rosbag2/issues/936>`_)
+* Remove JumpHandler copy-implementation from PlayerClock/TimeControllerClock (`#935 <https://github.com/ros2/rosbag2/issues/935>`_)
+* Auto-detect storage_id for Reader (if possible) (`#918 <https://github.com/ros2/rosbag2/issues/918>`_)
+* Contributors: Chris Lalancette, Emerson Knapp, Michael Orlov
+
+0.11.0 (2021-11-08)
+-------------------
+* Add --start-paused option to `ros2 bag play` (`#904 <https://github.com/ros2/rosbag2/issues/904>`_)
+* Use the message_introspection header to get MessageMember. (`#903 <https://github.com/ros2/rosbag2/issues/903>`_)
+* Update package maintainers (`#899 <https://github.com/ros2/rosbag2/issues/899>`_)
+* Fix converter plugin choices for record (`#897 <https://github.com/ros2/rosbag2/issues/897>`_)
+* Enable sanitizers only if code actually can run (`#572 <https://github.com/ros2/rosbag2/issues/572>`_)
+* Need to pass introspection TS to converter plugin for it to be useful (`#896 <https://github.com/ros2/rosbag2/issues/896>`_)
+* Don't preprocess a storage file more than once (`#895 <https://github.com/ros2/rosbag2/issues/895>`_)
+* Contributors: Chris Lalancette, Emerson Knapp, Ivan Santiago Paunovic, Michel Hidalgo, Shane Loretz, sonia
+
+0.10.1 (2021-10-22)
+-------------------
+
+0.10.0 (2021-10-19)
+-------------------
+* Fix a bug on invalid pointer address when using "MESSAGE" compressio… (`#866 <https://github.com/ros2/rosbag2/issues/866>`_)
+* Metadata per file info (`#870 <https://github.com/ros2/rosbag2/issues/870>`_)
+* Fix TSA warnings when building with clang thread analysis. (`#877 <https://github.com/ros2/rosbag2/issues/877>`_)
+* Implement snapshot mechanism and corresponding ROS Service (`#850 <https://github.com/ros2/rosbag2/issues/850>`_)
+* Circular Message Cache implementation for snapshot feature (`#844 <https://github.com/ros2/rosbag2/issues/844>`_)
+* Fix discovery silently stops after unknown msg type is found. (`#848 <https://github.com/ros2/rosbag2/issues/848>`_)
+* added seek interface (`#836 <https://github.com/ros2/rosbag2/issues/836>`_)
+* Refactor plugin query mechanism and standardize trait management (`#833 <https://github.com/ros2/rosbag2/issues/833>`_)
+* fix sequential reader rollover-to-next-file strategy: (`#839 <https://github.com/ros2/rosbag2/issues/839>`_)
+* Load compression and serialization choices via plugin query (`#827 <https://github.com/ros2/rosbag2/issues/827>`_)
+* Workaround for false positive findings by clang thread safety analysis in time controller jump callbacks API. (`#799 <https://github.com/ros2/rosbag2/issues/799>`_)
+* Add callbacks for PlayerClock::jump(time_point) API with CI fix (`#779 <https://github.com/ros2/rosbag2/issues/779>`_)
+* Revert "Add callbacks for PlayerClock::jump(time_point) API (`#775 <https://github.com/ros2/rosbag2/issues/775>`_)" (`#778 <https://github.com/ros2/rosbag2/issues/778>`_)
+* Add callbacks for PlayerClock::jump(time_point) API (`#775 <https://github.com/ros2/rosbag2/issues/775>`_)
+* Contributors: Barry Xu, Cameron Miller, Chris Lalancette, Emerson Knapp, Lei Liu, Michael Orlov, Wojciech Jaworski, sonia
+
 0.9.0 (2021-05-17)
 ------------------
 * Naive clock jump implementation - allows for clock reuse and simplified Player setup (`#754 <https://github.com/ros2/rosbag2/issues/754>`_)

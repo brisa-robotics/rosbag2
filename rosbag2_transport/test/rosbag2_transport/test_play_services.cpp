@@ -173,7 +173,7 @@ private:
       });
   }
 
-  void topic_callback(const test_msgs::msg::BasicTypes::ConstSharedPtr /* msg */)
+  void topic_callback(std::shared_ptr<const test_msgs::msg::BasicTypes>/* msg */)
   {
     {
       std::lock_guard<std::mutex> lk(got_msg_mutex_);
@@ -254,6 +254,12 @@ TEST_F(PlaySrvsTest, pause_resume)
     ASSERT_TRUE(is_paused());
   }
   expect_messages(false);
+
+  // resume to make sure we exit
+  for (size_t i = 0; i < 3; i++) {
+    successful_call<Resume>(cli_resume_);
+    ASSERT_FALSE(is_paused());
+  }
 }
 
 TEST_F(PlaySrvsTest, toggle_paused)

@@ -2,6 +2,49 @@
 Changelog for package rosbag2_compression
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.15.1 (2022-04-06)
+-------------------
+
+0.15.0 (2022-04-05)
+-------------------
+
+0.14.1 (2022-03-29)
+-------------------
+* Bump version number to avoid conflict
+* Contributors: Chris Lalancette
+
+0.14.0 (2022-03-29)
+-------------------
+* Install headers to include/${PROJECT_NAME} (`#958 <https://github.com/ros2/rosbag2/issues/958>`_)
+* Remove unnecessary public definition. (`#950 <https://github.com/ros2/rosbag2/issues/950>`_)
+* Contributors: Chris Lalancette, Shane Loretz
+
+0.13.0 (2022-01-13)
+-------------------
+
+0.12.0 (2021-12-17)
+-------------------
+* Changes for uncrustify 0.72 (`#937 <https://github.com/ros2/rosbag2/issues/937>`_)
+* Bugfix for broken bag split when using cache (`#936 <https://github.com/ros2/rosbag2/issues/936>`_)
+* Contributors: Chris Lalancette, Michael Orlov
+
+0.11.0 (2021-11-08)
+-------------------
+* Update package maintainers (`#899 <https://github.com/ros2/rosbag2/issues/899>`_)
+* Don't preprocess a storage file more than once (`#895 <https://github.com/ros2/rosbag2/issues/895>`_)
+* Contributors: Michel Hidalgo, sonia
+
+0.10.1 (2021-10-22)
+-------------------
+
+0.10.0 (2021-10-19)
+-------------------
+* added seek interface (`#836 <https://github.com/ros2/rosbag2/issues/836>`_)
+* Refactor plugin query mechanism and standardize trait management (`#833 <https://github.com/ros2/rosbag2/issues/833>`_)
+* fix sequential reader rollover-to-next-file strategy: (`#839 <https://github.com/ros2/rosbag2/issues/839>`_)
+* Load compression and serialization choices via plugin query (`#827 <https://github.com/ros2/rosbag2/issues/827>`_)
+* Contributors: Cameron Miller, sonia
+
 0.9.0 (2021-05-17)
 ------------------
 * Rename Reader/Writer 'reset' to 'close' (`#760 <https://github.com/ros2/rosbag2/issues/760>`_)

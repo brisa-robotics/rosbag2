@@ -20,18 +20,21 @@
 #include <unordered_map>
 #include <vector>
 
+#include "keyboard_handler/keyboard_handler.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "rosbag2_storage/yaml.hpp"
+#include "rosbag2_transport/visibility_control.hpp"
 
 namespace rosbag2_transport
 {
 struct RecordOptions
 {
 public:
-  bool all;
-  bool is_discovery_disabled;
+  bool all = false;
+  bool is_discovery_disabled = false;
   std::vector<std::string> topics;
   std::string rmw_serialization_format;
-  std::chrono::milliseconds topic_polling_interval;
+  std::chrono::milliseconds topic_polling_interval{100};
   std::string regex = "";
   std::string exclude = "";
   std::string node_prefix = "";
@@ -41,8 +44,20 @@ public:
   uint64_t compression_threads = 0;
   std::unordered_map<std::string, rclcpp::QoS> topic_qos_profile_overrides{};
   bool include_hidden_topics = false;
+  bool ignore_leaf_topics = false;
+  bool start_paused = false;
 };
 
 }  // namespace rosbag2_transport
+
+namespace YAML
+{
+template<>
+struct ROSBAG2_TRANSPORT_PUBLIC convert<rosbag2_transport::RecordOptions>
+{
+  static Node encode(const rosbag2_transport::RecordOptions & storage_options);
+  static bool decode(const Node & node, rosbag2_transport::RecordOptions & storage_options);
+};
+}  // namespace YAML
 
 #endif  // ROSBAG2_TRANSPORT__RECORD_OPTIONS_HPP_
